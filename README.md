@@ -2,8 +2,6 @@
 
 A ready-to-use Docker Compose configuration for running [n8n](https://n8n.io/) — a powerful open-source workflow automation tool — with a **PostgreSQL database** and **PgAdmin** interface. It's perfect for local testing, development, and automating personal or business tasks using AI workflows or custom automations.
 
----
-
 ## 🔧 Features
 
 - 🧠 Run **n8n** locally with basic authentication
@@ -43,7 +41,7 @@ Edit the .env file with your own credentials:
 	N8N_PASSWORD=securepass
 
 
-### Start the containers:
+### ▶️ GStart the containers:
 
 	docker-compose up -d
 
@@ -51,7 +49,7 @@ Edit the .env file with your own credentials:
 
 	docker-compose down
 
-## Update Docker container
+## 🔄 Update Docker container
 
 To fetch the latest images and rebuild:
 
@@ -59,18 +57,18 @@ To fetch the latest images and rebuild:
 	docker-compose up --force-recreate --build -d
 	docker image prune -f
 
-## Cleanup (optional)
+## ⚠️ Cleanup (optional)
 
 WARNING: This will delete your data stored in volumes!
 
 	docker-compose down -v
 
-## Volumes used
+## 📦 Volumes used
 
 - postgres_data → PostgreSQL data
 - pgadmin_data → PgAdmin configuration
 - n8n_data → n8n workflow and credential storage
 
-## Contribute
+## 🤝 Contribute
 
 Feel free to fork, improve or customize this boilerplate. Contributions are welcome — add support for other DBs, external services, or N8n enhancements!
