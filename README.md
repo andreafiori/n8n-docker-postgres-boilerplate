@@ -32,18 +32,29 @@ cp .env.template .env
 
 Edit the .env file with your own credentials:
 
-	POSTGRES_USER=youruser
-	POSTGRES_PASSWORD=yourpass
+```
+	# PostgreSQL configuration
+	POSTGRES_USER=postgres
+	POSTGRES_PASSWORD=postgres
 	POSTGRES_DB=n8n
+
+	# pgAdmin configuration
 	PGADMIN_EMAIL=admin@example.com
 	PGADMIN_PASSWORD=adminpass
-	N8N_USER=admin
-	N8N_PASSWORD=securepass
+
+	# n8n configuration
+	N8N_USER=mymail@example.com
+	N8N_PASSWORD=admin
+	N8N_HOST=localhost
+	N8N_PORT=5678
+	N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+	N8N_RUNNERS_ENABLED=true
+```
 
 
 ### ▶️ GStart the containers:
 
-	docker-compose up -d
+	docker compose up -d --build
 
 ### Stop them:
 
