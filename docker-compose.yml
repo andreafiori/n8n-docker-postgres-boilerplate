@@ -1,18 +1,36 @@
-
 services:
   postgres:
-    image: postgres:15
+    image: postgres:17.11
     container_name: n8n_postgres
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ:-UTC}
+    command:
+      - postgres
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-100}
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-256MB}
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_compression=on
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - n8n_net
 
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.19
     container_name: pgadmin
     restart: always
     ports:
@@ -20,38 +38,65 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: "False"   # local use only
+      TZ: ${TZ:-UTC}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - n8n_net
 
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:2.46.3   # latest stable 2.x (fall back to 1.123.91 if you prefer the 1.x line)
     container_name: n8n
     restart: always
     ports:
-      - "5678:5678"
+      - "${N8N_PORT:-5678}:5678"
     environment:
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
-      - DB_POSTGRESDB_USER=${POSTGRES_USER}
-      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_USER}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
-      - N8N_HOST=${N8N_HOST}
-      - N8N_PORT=${N8N_PORT}
-      - N8N_RUNNERS_ENABLED=${N8N_RUNNERS_ENABLED}
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=${N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS}
-      - WEBHOOK_TUNNEL_URL=http://localhost:5678
+      TZ: ${TZ:-UTC}
+      # --- n8n editor auth ---
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      # --- public host / webhooks ---
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      N8N_PORT: 5678
+      N8N_RUNNERS_ENABLED: ${N8N_RUNNERS_ENABLED:-true}
+      # Must be false on Windows / non-native-Linux hosts
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: ${N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS:-false}
+      # --- PostgreSQL connection ---
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_POSTGRESDB_SCHEMA: public
+      DB_POSTGRESDB_POOL_SIZE: ${DB_POSTGRESDB_POOL_SIZE:-10}
+      DB_POSTGRESDB_CONNECTION_TIMEOUT: ${DB_POSTGRESDB_CONNECTION_TIMEOUT:-3000}
+      DB_POSTGRESDB_SSL_ENABLED: ${DB_POSTGRESDB_SSL_ENABLED:-false}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5678/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - n8n_net
 
 volumes:
   postgres_data:
   n8n_data:
   pgadmin_data:
+
+networks:
+  n8n_net:
+    driver: bridge
